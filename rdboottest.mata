@@ -9,9 +9,9 @@ mata set matalnum off
 
 class WBSRDD {
   real scalar fuzzy, N, WWd, WWr, coarse, N_G, B₁, B₂
-  real colvector W, ZWd, ZWr, Wd, WrKr, clustid, X, Kd, Kr, retval
-  real matrix info, Zr, Zd, invZZd, invZZr, ZdinvZZd, Z
-
+  real colvector W, ZWd, ZWr, Wd, WrKr, halfWrKr, X, Kd, Kr, retval, MZdWrKr, WdKd
+  real matrix info, Zr, Zd, invZZd, invZZr, ZdinvZZd, Z, ZdKd
+real colvector clustid
   real colvector wbsrdd()
   void Prep()
 }
@@ -21,7 +21,7 @@ void WBSRDD::Prep(real scalar B₁, real scalar B₂, real colvector clustid, re
   this.B₁ = B₁
   this.B₂ = B₂
   this.fuzzy = fuzzy
-  this.clustid = clustid
+this.clustid = clustid
   this.X = X
   this.Z = Z
   this.Kd = Kd
@@ -43,14 +43,18 @@ void WBSRDD::Prep(real scalar B₁, real scalar B₂, real colvector clustid, re
 
   Zr = Z, J(N,1,1), X, W:*X  // expand Z to all vars to be partialled out; linear replication stage 
   Zd = X:^2; Zd = Zr, Zd, W:*Zd  // expand Z to all vars to be partialled out; quadratic DGP stage
-  invZZd = invsym(cross(Zd, Kd, Zd))
+  ZdKd = Zd :* Kd
+  invZZd = invsym(cross(ZdKd, Zd))
   invZZr = invsym(cross(Zr, Kr, Zr))
-  ZWd = cross(Zd, Kd, W); ZWr = cross(Zr, Kr, W)
-  WWd = cross(W , Kd, W); WWr = cross(W , Kr, W)    
+  ZWd = cross(ZdKd, W); ZWr = cross(Zr, Kr, W)
+  WWd = cross(W, Kd, W); WWr = cross(W , Kr, W)    
   Wd = W - Zd * invZZd * ZWd
+  WdKd = Wd :* Kd
   WrKr = (W - Zr * invZZr * ZWr) :* Kr
+  halfWrKr = WrKr/2
 
   ZdinvZZd = Zd * invZZd
+  MZdWrKr = WrKr - ZdKd * cross(ZdinvZZd, WrKr)
 
   if (!fuzzy)
     WWr = WWr - ZWr ' invZZr * ZWr
@@ -58,37 +62,50 @@ void WBSRDD::Prep(real scalar B₁, real scalar B₂, real colvector clustid, re
 }
 
 real colvector WBSRDD::wbsrdd(real scalar bc, real colvector Y, | real colvector T) {
-  real scalar ζhat, ζst, b; real colvector Yd, Td, uddoty, uddott, ζddoty, ζddott; real rowvector ζhatb; real matrix v, ustby, ustbt, ystb, tstb
+  real scalar ζhat, ζst, b; real colvector Yd, Td, uddoty, uddott, ζddoty, ζddott; real rowvector ζhatb, Wrustby, Wystb, Wrustbt, Wtstb; real matrix v, ustby, ustbt, ystb, tstb
 
-  Yd = Y - ZdinvZZd * cross(Zd, Kd, Y)  // FWL
-  if (fuzzy)
-    Td = T - ZdinvZZd * cross(Zd, Kd, T)
-
-  ζddoty = cross(Wd,Kd,Yd) / WWd
+  Yd = Y - ZdinvZZd * cross(ZdKd, Y)  // FWL
+  ζddoty = cross(WdKd,Yd) / WWd
   uddoty = Yd - Wd * ζddoty
   if (fuzzy) {
+    Td = T - ZdinvZZd * cross(ZdKd, T)
     ζddott = cross(Wd,Kd,Td) / WWd
     uddott = Td - Wd * ζddott
   }
 
-  v = 2 * (runiform(N_G, (bc ? B₁ : B₂) + 1) :< .5) :- 1  // Rademacher weights for *all* replications  XXX can halve these for speed?
-  v[,1] = J(N_G,1,1)
-
-  if (N_G < N) {
-  } else {  // XXX eliminate O(N) operations?
-    ustby = uddoty :* v; ustby = ustby - ZdinvZZd * cross(Zd,Kd,ustby)
-    ystb = (Y - ustby[,1]) :+ ustby
-    if (fuzzy) {
-      ustbt = uddott :* v; ustbt = ustbt - ZdinvZZd * cross(Zd,Kd,ustbt)
-      tstb = (T - ustbt[,1]) :+ ustbt
-    }
-  }
-  
   if (bc) { // bias-correcting step
-    ζhatb = cross(WrKr,ystb) :/ (fuzzy? cross(WrKr,tstb) : WWr)  // replication regressions
+    v = (runiform(N_G, (bc ? B₁ : B₂) + 1) :< .5) :- .5  // Rademacher weights for *all* replications; halved for speed of generation
+    v[,1] = J(N_G,1,.5)
+    
+    if (rows(clustid)) {
+    } else {  // XXX eliminate O(N) operations?
+      ustby = uddoty :* v
+      Wrustby = cross(MZdWrKr,ustby) // Wr'u^{*b}_y computed instead of u^{*b}_y alone, for speed
+      Wystb = (cross(halfWrKr,Y) - Wrustby[,1]) :+ Wrustby  // Wr ' (*un*-FWL'd endog vars)
+      if (fuzzy) {
+        ustbt = uddott :* v
+        Wrustbt = cross(MZdWrKr,ustbt)
+        Wtstb = (cross(halfWrKr,T) - Wrustbt[,1]) :+ Wrustbt
+      }
+    }
+
+    ζhatb = Wystb :/ (fuzzy? Wtstb : WWr/2)  // replication regressions
     ζhat = ζhatb[1]  // original-sample linear estimate
     return(2 * ζhat - (rowsum(ζhatb)-ζhat)/B₁)  // bias-corrected estimate
   } else {  // variance simulation step
+    v = 2 * (runiform(N_G, (bc ? B₁ : B₂) + 1) :< .5) :- 1  // Rademacher weights for *all* replications
+    v[,1] = J(N_G,1,1)
+    
+    if (rows(clustid)) {
+    } else {  // XXX eliminate O(N) operations?
+      ustby = uddoty :* v; ustby = ustby - ZdinvZZd * cross(Zd,Kd,ustby)
+      ystb = (Y - ustby[,1]) :+ ustby
+      if (fuzzy) {
+        ustbt = uddott :* v; ustbt = ustbt - ZdinvZZd * cross(Zd,Kd,ustbt)
+        tstb = (T - ustbt[,1]) :+ ustbt
+      }
+    }
+
     ζst = cross(WrKr,Y) :/ (fuzzy? cross(WrKr,T) : WWr)  // in 1st entry, ζ*, uncorrected estimate for "original" sample at variance-simulating level
     retval[1] = fuzzy? wbsrdd(1, ystb[,1], tstb[,1]) : wbsrdd(1, ystb[,1])  // bias-corrected estimate in "original" bs sample, ζ* - Δ*ᵢ
     for (b=2; b<=B₂+1; b++)
@@ -110,26 +127,29 @@ program define sim, rclass
 
   drop _all
   set obs `n'
-  mat C = 1, ρ \ ρ, 1
+  mat C = 1, `ρ' \ `ρ', 1
   drawnorm double ut uy, corr(C)
   replace uy = .1295 * uy
   gen double X = 2 * rbeta(2,4) - 1
-  gen byte T = ut <= invnormal(cond(X<0, .5-c/2, .5+c/2))
+  gen byte T = ut <= invnormal(cond(X<0, .5-`c'/2, .5+`c'/2))
 
-  gen double Y = ζ*T + rnormal() + `yfn'
-
+  gen double Y = `ζ'*T + rnormal() + `yfn'
   rdrobust Y X, fuzzy(T) bwselect(cerrd) all
   return scalar CL_ζhat = _b[Conventional]
   return scalar RBC_ζhat = _b[Robust]
   return scalar CL_IL = (e(ci_r_cl) - e(ci_l_cl)) / 2
   return scalar RBC_IL = (e(ci_r_rb) - e(ci_l_rb)) / 2
+  return scalar hCEO = e(h_l)
+  return scalar bCEO = e(b_l)
 
   keep if abs(X) < max(e(b_l), e(h_l))
   gen double Kd = max(0, 1 - abs(X) / e(b_l))  // triangular kernels with rdrobust bw's
   gen double Kr = max(0, 1 - abs(X) / e(h_l))
 
+// gen int clustid = floor((_n-1)/10) + 1
+
   mata M = WBSRDD()
-  mata M.Prep(`b₁', `b₂', J(0,1,0), st_data(.,"X"), J(`=_N',0,0), st_data(.,"Kd"), st_data(.,"Kr"), 1)
+  mata M.Prep(`b₁', `b₂', /*st_data(.,"clustid")*/ J(0,1,0), st_data(.,"X"), J(`=_N',0,0), st_data(.,"Kd"), st_data(.,"Kr"), 1)
   mata dist = M.wbsrdd(0, st_data(.,"Y"), st_data(.,"T"))
   mata distCDR = abs(dist[|2\.|]); _sort(distCDR,1)
   mata st_numscalar("return(WBS_ζhat)", dist[1])
@@ -140,12 +160,13 @@ program define sim, rclass
   }
 end
 
-sim, ζ(.04) ρ(.9) yfn(cond(X<0, (1.27+(7.18+(20.21+(21.54+7.33*X)*X)*X)*X)*X, (.84+(-3+(7.99+(-9.01+3.56*X)*X)*X)*X)*X))
+// simulate, reps(3) nodots: sim, ζ(.04) ρ(.9) yfn(cond(X<0, (1.27+(7.18+(20.21+(21.54+7.33*X)*X)*X)*X)*X, (.84+(-3+(7.99+(-9.01+3.56*X)*X)*X)*X)*X))
 
-mata M.wbsrdd(0, st_data(.,"Y"), st_data(.,"T"))
+parallel init 6
+parallel sim, exp(CL_ζhat=r(CL_ζhat) CL_IL=r(CL_IL) CL_EC=r(CL_EC) RBC_ζhat=r(RBC_ζhat) RBC_IL=r(RBC_IL) RBC_EC=r(RBC_EC) WBS_ζhat=r(WBS_ζhat) WBS_IL=r(WBS_IL) WBS_EC=r(WBS_EC)) reps(100) nodots proc(2): ///
+  sim, ζ(.04) ρ(.9) yfn(cond(X<0, (1.27+(7.18+(20.21+(21.54+7.33*X)*X)*X)*X)*X, (.84+(-3+(7.99+(-9.01+3.56*X)*X)*X)*X)*X))
+sum
 
-// parallel init 6
-// simulate CL_ζhat=r(CL_ζhat) CL_IL=r(CL_IL) CL_EC=r(CL_EC) RBC_ζhat=r(RBC_ζhat) RBC_IL=r(RBC_IL) RBC_EC=r(RBC_EC) WBS_ζhat=r(WBS_ζhat) WBS_IL=r(WBS_IL) WBS_EC=r(WBS_EC), nodots reps(3): sim, ζ(.04) ρ(.9) yfn(cond(X<0, (1.27+(7.18+(20.21+(21.54+7.33*X)*X)*X)*X)*X, (.84+(-3+(7.99+(-9.01+3.56*X)*X)*X)*X)*X))
 // // scalar ζ = .04
 // // scalar ζ = -3.45
 // // scalar ζ = .04

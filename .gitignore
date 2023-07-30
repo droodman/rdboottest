@@ -1,3 +1,5 @@
 
 ~rdboottest.mata.stswp
 *.log
+__pll*
+~.gitignore.stswp

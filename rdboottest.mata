@@ -265,7 +265,7 @@ void WBSRDD::vs(real colvector Y, | real colvector T) {
   _sort(dist,1)
 }
 
-real colvector WBSRDD::getdist() return(dist)
+real colvector WBSRDD::getdist() return(dist :+ zetastbc)
 
 real scalar WBSRDD::getp(| string scalar ptype) {
   if (ptype=="symmetric" | ptype=="")

@@ -4,7 +4,8 @@ program define rdboottest, eclass
 
   local cmdline `0'
 
-  syntax varlist [if] [in], [c(real 0) scalepar(real 1) fuzzy(varname) weights(string) seed(string) nojk nobc BCREPs(integer 500) REPs(integer 999) Level(real `c(level)') PType(string) *]
+  syntax varlist [if] [in], [c(real 0) scalepar(real 1) Level(real `c(level)') fuzzy(varname) weights(string) covs(string) ///
+                             seed(string) jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) *]
   
   if `:word count `ptype'' > 1 {
 		di as err "The {cmd:wp:type} option must be {cmdab:sym:metric}, {cmdab:eq:qualtail}, {cmd:lower}, or {cmd:upper}."
@@ -18,17 +19,29 @@ program define rdboottest, eclass
 		local ptype `symmetric'`equaltail'`lower'`upper'
 	}
 
-  local jk = "`jk'"==""
+  if `:word count `weighttype'' > 1 {
+		di as err "The {cmd:weight:type} option must be {cmdab:rad:emacher}, {cmdab:mam:men}, {cmdab:nor:mal}, {cmdab:web:b}, or {cmdab:gam:ma}."
+		exit 198
+	}
+	if "`weighttype'"'=="" local weighttype rademacher
+	else {
+		local 0, `weighttype'
+		syntax, [RADemacher MAMmen NORmal WEBb GAMma]
+		local weighttype `rademacher'`mammen'`normal'`webb'`gamma'
+	}
+
+
+  local jk = "`jk'"!=""
   local bc = "`bc'"==""
 
   marksample touse
-  markout `touse' `weights' `fuzzy'
+  markout `touse' `weights' `fuzzy' `covs'
   
-  rdrobust `varlist' `if' `in', c(`c') scalepar(`scalepar') fuzzy(`fuzzy') weights(`weights') `options'
+  rdrobust `varlist' `if' `in', c(`c') scalepar(`scalepar') fuzzy(`fuzzy') weights(`weights') covs(`covs') level(`level') `options'
   ereturn local fuzzy `fuzzy'
 
   preserve
-  qui keep if `touse' & `e(runningvar)' > 0`c'-max(e(h_l), e(b_l)) & `e(runningvar)' < 0`c'+max(e(h_r), e(b_r))
+  qui keep if `touse' & `e(runningvar)' > `c'-max(e(h_l), e(b_l)) & `e(runningvar)' < `c'+max(e(h_r), e(b_r))
   
   if `c' {
     tempvar runningvar
@@ -44,9 +57,8 @@ program define rdboottest, eclass
   }
   else local clustidopt J(0,1,0)
   
-  local covsopt = cond("`e(covs)'"=="", "J(`=_N',0,0)", "`st_data(.,"`e(covs)'")'")
-  
-  local wtopt = cond(`"`weights'"'=="", "J(0,1,0)", "`st_data(.,"`weights'")'")
+  local covsopt = cond("`covs'"   =="", "J(`=_N',0,0)", "`st_data(.,"`covs'")'")
+  local wtopt   = cond("`weights'"=="", "J(0,1,0)"    , "`st_data(.,"`weights'")'")
 
   if `"`seed'"'!="" {
     set seed `seed'
@@ -55,7 +67,7 @@ program define rdboottest, eclass
   else ereturn local seed `c(seed)'
 
   mata _rdboottestM = WBSRDD()
-  mata _rdboottestM.Prep(`e(p)', `e(q)', `bcreps', `reps', `clustidopt', st_data(.,"`runningvar'"), `covsopt', `wtopt', st_numscalar("e(h_l)"), st_numscalar("e(h_r)"), st_numscalar("e(b_l)"), st_numscalar("e(b_r)"), "triangular", "`fuzzy'"!="", `bc', `jk')
+  mata _rdboottestM.Prep(`e(p)', `e(q)', `bcreps', `reps', "`weighttype'", `clustidopt', st_data(.,"`runningvar'"), `covsopt', `wtopt', st_numscalar("e(h_l)"), st_numscalar("e(h_r)"), st_numscalar("e(b_l)"), st_numscalar("e(b_r)"), "`e()'", "`fuzzy'"!="", `bc', `jk')
   mata "`fuzzy'"=="" ? _rdboottestM.vs(st_data(.,"`e(depvar)'")) : _rdboottestM.vs(st_data(.,"`e(depvar)'"), st_data(.,"`fuzzy'"))
   restore
 

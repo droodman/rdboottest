@@ -1,0 +1,19 @@
+d 'rdboottest': Wild-bootstrap-based inference for regression discontinuity (He & Bartalotti 2020)
+d
+d rdboottest is a wrapper for rdrobust
+d It runs rdrobust, prints the output, and tacks on wild-bootstrap-based using the method
+d of He and Bartalotti (2020). Its syntax is the same as rdrobust's except for 
+d accepting extra optsion to control the wild bootstrap. It requires Stata 13 or later. 
+d
+d KW: Regression discontinuity design
+d KW: Bias correction
+d KW: Wild bootstrap
+d
+d Requires: Stata version 13+ and rdrobust.
+d
+d Author: David Roodman
+d Support: email david@@davidroodman.com
+d
+f rdboottest.ado
+f lrdboottest.mlib
+

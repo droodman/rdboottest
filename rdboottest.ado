@@ -71,7 +71,7 @@ program define rdboottest, eclass
   mata "`fuzzy'"=="" ? _rdboottestM.vs(st_data(.,"`e(depvar)'")) : _rdboottestM.vs(st_data(.,"`e(depvar)'"), st_data(.,"`fuzzy'"))
   restore
 
-  mata st_numscalar("e(tau_bc_wb)", _rdboottestM.zetastbc * `scalepar')
+  if `bc' mata st_numscalar("e(tau_bc_wb)", _rdboottestM.zetastbc * `scalepar')
   mata st_numscalar("e(p_wb)", _rdboottestM.getp("`ptype'"))
   mata CI = _rdboottestM.getci(`level', "`ptype'")
   mata st_numscalar("e(ci_l_rb_wb)", CI[1+(`scalepar'<0)] * `scalepar')
@@ -84,8 +84,10 @@ program define rdboottest, eclass
   if `bc' di "Bias-corrected. " _c
   di "Bootstrap method of He and Bartalotti (2020)" _n
 
-  eretun local weighttype_wb `weighttype'
-  eretun local ptype_wb `ptype'
+  ereturn local weighttype_wb `weighttype'
+  ereturn local ptype_wb `ptype'
+  ereturn scalar reps = `reps'
+  ereturn scalar bcreps = `bcreps'
   ereturn local jk_wb `jk'
   ereturn local bc_wb `jk'
   ereturn repost, esample(`touse')

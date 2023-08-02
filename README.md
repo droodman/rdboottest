@@ -10,7 +10,7 @@ When more mature, this package will be posted on SSC. For now, install it from S
 ```
 net install rdboottest, from(https://raw.github.com/droodman/reghdfejl/v[X.Y.Z])
 ```
-where "[X.Y.Z]" represents the [latest release version number](https://github.com/droodman/reghdfejl/releases).
+where "[X.Y.Z]" represents the [latest release version number](https://github.com/droodman/rdboottest/releases).
 
 ## Documentation
 Install and type `help rdboottest` in Stata.

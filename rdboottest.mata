@@ -10,8 +10,8 @@ struct smatrix {
 
 class WBSRDD {
   real scalar fuzzy, N, WWd, WWr, N_G, B1, B2, jk, granularjk, m, dirty, bc, zetast, zetastbc, p, q, v_sd, auxwttype, hasclust
-  real colvector W, ZWd, ZWr, Wd, WrKr, halfWrKr, MZdWrKr, WdKd, clustid, dist
-  pointer(real colvector) scalar pMZdWrKrjk
+  real colvector ZWd, ZWr, Wd, WrKr, MZdWrKr, WdKd, clustid, dist
+  pointer(real colvector) scalar pMZdWrKrjk, phalfWrKr
   real matrix info, Zr, Zd, invZZd, invZZr, ZdinvZZd, ZdKd, vbc, vvs
   struct smatrix colvector invMg, Xg, XXg, XinvHg, uddoty, uddott
 
@@ -75,9 +75,9 @@ real matrix WBSRDD::MakeWildWeights(real scalar B, real scalar scaletrickok) {
 }
 
 // one-time stuff that only depends on exog vars and cluster and kernel definitions
-void WBSRDD::Prep(real scalar p, real scalar q, real scalar B1, real scalar B2, string scalar auxwttype, real colvector clustid, real colvector X, real matrix Z, real colvector wt, real scalar h_l, real scalar h_r, real scalar b_l, real scalar b_r, string scalar kernel, 
+void WBSRDD::Prep(real scalar p, real scalar q, real scalar deriv, real scalar B1, real scalar B2, string scalar auxwttype, real colvector clustid, real colvector X, real matrix Z, real colvector wt, real scalar h_l, real scalar h_r, real scalar b_l, real scalar b_r, string scalar kernel, 
                   real scalar fuzzy, real scalar bc, real scalar jk) {
-  real colvector tmp, Kd, Kr; real matrix ZZd, H, invH, neginvH, Z_W, Xp; real scalar g, kZ, invm; pointer(real colvector function) kernelfn
+  real colvector tmp, Kd, Kr, D; real matrix ZZd, H, invH, neginvH, Z_W, Xp; real scalar g, kZ, invm; pointer(real colvector function) kernelfn; pointer(real colvector) scalar pW
 
   this.B1 = B1
   this.B2 = B2
@@ -85,8 +85,6 @@ void WBSRDD::Prep(real scalar p, real scalar q, real scalar B1, real scalar B2, 
   this.jk = jk
   this.bc = bc
   this.clustid = clustid
-
-  W = X:>=0  // RHS var of interest: ITT
 
   kernelfn = kernel=="Triangular"? &triangularkernel() : (kernel=="Epanechnikov"? &epanechnikovkernel() : &uniformkernel())
   Kd = (*kernelfn)(b_l, X) :* (X:<0) :* (X:>-b_l) + (*kernelfn)(b_r, X) :* (X:>=0) :* (X:<b_r)
@@ -109,6 +107,8 @@ void WBSRDD::Prep(real scalar p, real scalar q, real scalar B1, real scalar B2, 
     N_G = N
   }
 
+  D = X:>=0  // dummy for crossing threshold
+
   tmp = X
   if (p) {  // expand Z to all vars to be partialled out; normally-linear (p=1) replication stage
     Xp = X
@@ -116,25 +116,28 @@ void WBSRDD::Prep(real scalar p, real scalar q, real scalar B1, real scalar B2, 
       tmp = tmp :* X
       Xp = Xp, tmp  // polynomials in running var
     }
-    Zr = Z, J(N,1,1), Xp, W:*Xp 
+    Zr = Z, J(N,1,1), Xp, (deriv? D:*Xp[|.,deriv+1\.,.|] : D:*Xp) 
   } else
     Zr = Z, J(N,1,1)
+
+  pW = deriv? &(D :* Xp[,deriv]) : &D  // treatment var of interest
+
   Xp = J(N,0,0)
   for (g=q;g>p;g--) {  // same for DGP stage with higher-order poly in running var
     tmp = tmp :* X
     Xp = Xp, tmp
   }
-  Zd = Zr, Xp, W:*Xp  // expand Z to all vars to be partialled out; normally-linear (p=1) replication stage 
-  
+  Zd = Zr, Xp, D:*Xp  // expand Z to all vars to be partialled out; normally-linear (p=1) replication stage 
+
   ZdKd = Zd :* Kd
   invZZd = invsym(ZZd = cross(ZdKd, Zd))
   invZZr = invsym(      cross(Zr, Kr, Zr))
-  ZWd = cross(ZdKd, W); ZWr = cross(Zr, Kr, W)
-  WWd = cross(W, Kd, W); WWr = cross(W, Kr, W)
+  ZWd = cross(ZdKd, *pW); ZWr = cross(Zr, Kr, *pW)
+  WWd = cross(*pW, Kd, *pW); WWr = cross(*pW, Kr, *pW)
 
-  Wd = W - Zd * invZZd * ZWd
+  Wd = *pW - Zd * invZZd * ZWd
   WdKd = Wd :* Kd
-  WrKr = (W - Zr * invZZr * ZWr) :* Kr
+  WrKr = (*pW - Zr * invZZr * ZWr) :* Kr
 
   ZdinvZZd = Zd * invZZd
   MZdWrKr = WrKr - ZdKd * cross(ZdinvZZd, WrKr)
@@ -149,7 +152,7 @@ void WBSRDD::Prep(real scalar p, real scalar q, real scalar B1, real scalar B2, 
 
   vvs = MakeWildWeights(B2, 0)  // one-time: make aux weights for variance-simulation level and set v_sd for v-scaling trick at bc level
   if (!hasclust) vbc = MakeWildWeights(B1, 1)  // if not clustering, generate bc weights once and jumble them indirectly by instead jumbling what they multiply against
-  halfWrKr = v_sd != 1? WrKr * v_sd : WrKr
+  phalfWrKr = v_sd != 1? &(WrKr * v_sd) : &WrKr
 
   // jk prep
   if (jk) {
@@ -237,11 +240,11 @@ real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
     Wrustby = cross(panelsum(MZdWrKr, uddoty[1+jk].M, info), vbc)  // Wr'u^{*b}_y computed instead of u^{*b}_y alone, for speed
 
     if (jk) Wrustby[1] = cross(MZdWrKr, uddoty.M) * v_sd  // fix: original-sample ust is non-jk'd uddot; "* v_sd" for consistency with weight-scaling trick
-    Wystb = (cross(halfWrKr,Y) - Wrustby[1]) :+ Wrustby  // Wr ' (*un*-FWL'd endog vars); "half" compensates for Rademacher-halving trick
+    Wystb = (cross(*phalfWrKr,Y) - Wrustby[1]) :+ Wrustby  // Wr ' (*un*-FWL'd endog vars); "half" compensates for Rademacher-halving trick
     if (fuzzy) {
       Wrustbt = cross(panelsum(MZdWrKr, uddott.M, info), vbc)
       if (jk) Wrustbt[1] = cross(MZdWrKr, uddott.M) * v_sd
-      Wtstb = (cross(halfWrKr,T) - Wrustbt[1]) :+ Wrustbt
+      Wtstb = (cross(*phalfWrKr,T) - Wrustbt[1]) :+ Wrustbt
     }
   } else {
     if (b == 1) {
@@ -256,12 +259,12 @@ real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
 
     Wrustby = cross(*pMZdWrKrjku, uddoty.M, vbc)  // Wr'u^{*b}_y computed instead of u^{*b}_y alone, for speed; jk-ing already folded into MZdWrKrjk
     if (jk) Wrustby[1] = cross(*pMZdWrKru, uddoty.M) * v_sd
-    Wystb = (cross(halfWrKr,Y) - Wrustby[1]) :+ Wrustby  // Wr ' (un-FWL'd endog vars); "half" compensates for Rademacher-halving trick
+    Wystb = (cross(*phalfWrKr,Y) - Wrustby[1]) :+ Wrustby  // Wr ' (un-FWL'd endog vars); "half" compensates for Rademacher-halving trick
 
     if (fuzzy) {
       Wrustbt = cross(*pMZdWrKrjku, uddott.M, vbc)
       if (jk) Wrustbt[1] = cross(*pMZdWrKru, uddott.M) * v_sd
-      Wtstb = (cross(halfWrKr,T) - Wrustbt[1]) :+ Wrustbt
+      Wtstb = (cross(*phalfWrKr,T) - Wrustbt[1]) :+ Wrustbt
     }
   }
   zetahatb = Wystb :/ (fuzzy? Wtstb : WWr * v_sd)  // replication regressions; "* v_sd" compensates for Rademacher-halving trick
@@ -323,7 +326,7 @@ real colvector WBSRDD::getdist() return(dist :+ zetastbc)
 
 real scalar WBSRDD::getp(| string scalar ptype) {
   if (ptype=="symmetric" | ptype=="")
-    return(colsum(-abs(zetastbc) :> -abs(zetastbc :+ dist)) / B2)
+    return(colsum(0 :< -abs(zetastbc :+ dist)) / B2)
   if (ptype=="equaltail")
     return(2 * min((colsum(dist :< 0) , colsum(dist :> 0))) / B2)
   if (ptype=="lower")

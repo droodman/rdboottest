@@ -4,7 +4,7 @@ program define rdboottest, eclass
 
   local cmdline `0'
 
-  syntax varlist [if] [in], [c(real 0) scalepar(real 1) Level(real `c(level)') fuzzy(varname) weights(string) covs(string) ///
+  syntax varlist [if] [in], [c(real 0) scalepar(real 1) Level(real `c(level)') fuzzy(varname) weights(string) covs(string) deriv(integer 0) ///
                              seed(string) JACKknife jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) *]
   
   if `:word count `ptype'' > 1 {
@@ -30,15 +30,15 @@ program define rdboottest, eclass
 		local weighttype `rademacher'`mammen'`normal'`webb'`gamma'
 	}
 
-
   local jk = "`jk'`jackknife'"!=""
   local bc = "`bc'"==""
 
   marksample touse
   markout `touse' `weights' `fuzzy' `covs'
   
-  rdrobust `varlist' `if' `in', c(`c') scalepar(`scalepar') fuzzy(`fuzzy') weights(`weights') covs(`covs') level(`level') `options'
+  rdrobust `varlist' `if' `in', c(`c') scalepar(`scalepar') fuzzy(`fuzzy') weights(`weights') covs(`covs') level(`level') deriv(`deriv') `options'
   ereturn local fuzzy `fuzzy'
+  ereturn local deriv `deriv'
 
   preserve
   qui keep if `touse' & `e(runningvar)' > `c'-max(e(h_l), e(b_l)) & `e(runningvar)' < `c'+max(e(h_r), e(b_r))
@@ -67,20 +67,21 @@ program define rdboottest, eclass
   else ereturn local seed `c(seed)'
 
   mata _rdboottestM = WBSRDD()
-  mata _rdboottestM.Prep(`e(p)', `e(q)', `bcreps', `reps', "`weighttype'", `clustidopt', st_data(.,"`runningvar'"), `covsopt', `wtopt', st_numscalar("e(h_l)"), st_numscalar("e(h_r)"), st_numscalar("e(b_l)"), st_numscalar("e(b_r)"), "`e(kernel)'", "`fuzzy'"!="", `bc', `jk')
+  mata _rdboottestM.Prep(`e(p)', `e(q)', 0`deriv', `bcreps', `reps', "`weighttype'", `clustidopt', st_data(.,"`runningvar'"), `covsopt', `wtopt', st_numscalar("e(h_l)"), st_numscalar("e(h_r)"), st_numscalar("e(b_l)"), st_numscalar("e(b_r)"), "`e(kernel)'", "`fuzzy'"!="", `bc', `jk')
   mata "`fuzzy'"=="" ? _rdboottestM.vs(st_data(.,"`e(depvar)'")) : _rdboottestM.vs(st_data(.,"`e(depvar)'"), st_data(.,"`fuzzy'"))
   restore
 
   if `bc' mata st_numscalar("e(tau_bc_wb)", _rdboottestM.zetastbc * `scalepar')
+else mata st_numscalar("e(tau_bc_wb)", _rdboottestM.zetast * `scalepar')
   mata st_numscalar("e(p_wb)", _rdboottestM.getp("`ptype'"))
   mata CI = _rdboottestM.getci(`level', "`ptype'")
   mata st_numscalar("e(ci_l_rb_wb)", CI[1+(`scalepar'<0)] * `scalepar')
   mata st_numscalar("e(ci_r_rb_wb)", CI[2-(`scalepar'<0)] * `scalepar')
   mata st_matrix("e(dist_wb)", _rdboottestM.getdist() * `scalepar')
 
-  di _n as inp "{hline 19}{c TT}{hline 60}"
-  di as inp "    Wild bootstrap {c |}" _col(22) as res %7.0g cond(`bc', e(tau_bc_wb), e(tau_bc_wb)) _col(52) %4.3f e(p_wb) _col(60) %8.0g e(ci_l_rb_wb) _col(73) %8.0g e(ci_r_rb_wb)
-  di as inp "{hline 19}{c BT}{hline 60}"
+  di _n as txt "{hline 19}{c TT}{hline 60}"
+  di as txt "    Wild bootstrap {c |}" _col(22) as res %7.0g cond(`bc', e(tau_bc_wb), e(tau_bc_wb)) _col(52) %4.3f e(p_wb) _col(60) %8.0g e(ci_l_rb_wb) _col(73) %8.0g e(ci_r_rb_wb)
+  di as txt "{hline 19}{c BT}{hline 60}"
   if `bc' di "Bias-corrected. " _c
   di "Bootstrap method of He and Bartalotti (2020)" _n
 

@@ -95,12 +95,13 @@ bias-correction can be destabilizing when the discontinuity in treatment variabl
 
 {pstd}
 Because the algorithm uses CCT bandwidths, and because {cmd:rdrobust} does not save all aspects of a user's specification in e() results, {cmd:rdboottest}
-is wrapper for {cmd:rdrobust} rather than a post-estimation command. It starts by calling {cmd:rdrobust} and then add bootstrap results both to the output
+is wrapper for {cmd:rdrobust} rather than a post-estimation command. It starts by calling {cmd:rdrobust} and adds bootstrap results to the output
 and the e() results.
 
 {pstd}
 {cmd:rdboottest} will adapt if the user overrides the {cmd:rdrobust} defaults for kernel type, bandwidth setting, or polynomial order of controls in the bias-correction
-and estimation regressions. It also works when the left and right bandwidths differ.
+and estimation regressions. It also works when the left and right bandwidths differ. And it works for kink designs, requested through {cmd:rdrobust}'s {cmd:deriv()},
+although this functionality has not been tested with simulations.
 
 
 {marker options}{...}

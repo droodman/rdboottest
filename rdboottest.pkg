@@ -15,5 +15,7 @@ d Author: David Roodman
 d Support: email david@@davidroodman.com
 d
 f rdboottest.ado
+f rdboottest.mata
 f lrdboottest.mlib
+f rdboottest.sthlp
 

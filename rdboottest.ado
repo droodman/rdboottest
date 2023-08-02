@@ -5,7 +5,7 @@ program define rdboottest, eclass
   local cmdline `0'
 
   syntax varlist [if] [in], [c(real 0) scalepar(real 1) Level(real `c(level)') fuzzy(varname) weights(string) covs(string) ///
-                             seed(string) jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) *]
+                             seed(string) JACKknife jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) *]
   
   if `:word count `ptype'' > 1 {
 		di as err "The {cmd:wp:type} option must be {cmdab:sym:metric}, {cmdab:eq:qualtail}, {cmd:lower}, or {cmd:upper}."
@@ -31,7 +31,7 @@ program define rdboottest, eclass
 	}
 
 
-  local jk = "`jk'"!=""
+  local jk = "`jk'`jackknife'"!=""
   local bc = "`bc'"==""
 
   marksample touse
@@ -67,7 +67,7 @@ program define rdboottest, eclass
   else ereturn local seed `c(seed)'
 
   mata _rdboottestM = WBSRDD()
-  mata _rdboottestM.Prep(`e(p)', `e(q)', `bcreps', `reps', "`weighttype'", `clustidopt', st_data(.,"`runningvar'"), `covsopt', `wtopt', st_numscalar("e(h_l)"), st_numscalar("e(h_r)"), st_numscalar("e(b_l)"), st_numscalar("e(b_r)"), "`e()'", "`fuzzy'"!="", `bc', `jk')
+  mata _rdboottestM.Prep(`e(p)', `e(q)', `bcreps', `reps', "`weighttype'", `clustidopt', st_data(.,"`runningvar'"), `covsopt', `wtopt', st_numscalar("e(h_l)"), st_numscalar("e(h_r)"), st_numscalar("e(b_l)"), st_numscalar("e(b_r)"), "`e(kernel)'", "`fuzzy'"!="", `bc', `jk')
   mata "`fuzzy'"=="" ? _rdboottestM.vs(st_data(.,"`e(depvar)'")) : _rdboottestM.vs(st_data(.,"`e(depvar)'"), st_data(.,"`fuzzy'"))
   restore
 
@@ -84,6 +84,10 @@ program define rdboottest, eclass
   if `bc' di "Bias-corrected. " _c
   di "Bootstrap method of He and Bartalotti (2020)" _n
 
+  eretun local weighttype_wb `weighttype'
+  eretun local ptype_wb `ptype'
+  ereturn local jk_wb `jk'
+  ereturn local bc_wb `jk'
   ereturn repost, esample(`touse')
   ereturn local cmdline `cmdline'
   ereturn local cmd rdboottest

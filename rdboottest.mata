@@ -302,7 +302,6 @@ void WBSRDD::vs(real colvector Y, | real colvector T) {
       tstb = (T - uddott.M) :+ ustbt
     }
   }
-
   zetast = cross(WrKr,Y) :/ (fuzzy? cross(WrKr,T) : WWr)  // zeta*, uncorrected estimate for "original" sample at variance-simulating level
   if (bc) {
     dist = J(B2, 1, 0)
@@ -335,9 +334,11 @@ real scalar WBSRDD::getp(| string scalar ptype) {
 }
 
 real rowvector WBSRDD::getci(real scalar level, | string scalar citype) {
-  real scalar halfwidth
+  real scalar halfwidth; real colvector absdist
   if (citype=="symmetric" | citype=="") {
-    halfwidth = abs(dist)[round(level/100 * B2)]
+    absdist = abs(dist)
+    _sort(absdist,1)
+    halfwidth = absdist[round(level/100 * B2)]
     return((zetastbc-halfwidth, zetastbc+halfwidth))
   }
   if (citype=="equaltail")

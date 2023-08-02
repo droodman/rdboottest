@@ -7,7 +7,7 @@ and confidence interval. It will add these results to e(), along with the sample
 return values.
 
 ## Installation
-When more mature, this package will be posted on SSC. For now, install it from Stata with
+When more mature, this package will be posted on SSC. For now, install it in Stata with
 ```
 net install rdboottest, replace from(https://raw.github.com/droodman/rdboottest/vX.Y.Z)
 ```

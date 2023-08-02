@@ -5,7 +5,7 @@ program define rdboottest, eclass
   local cmdline `0'
 
   syntax varlist [if] [in], [c(real 0) scalepar(real 1) Level(real `c(level)') fuzzy(varname) weights(string) covs(string) deriv(integer 0) ///
-                             seed(string) JACKknife jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) *]
+                             seed(string) JACKknife jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) WEIGHTtype(string) *]
   
   if `:word count `ptype'' > 1 {
 		di as err "The {cmd:wp:type} option must be {cmdab:sym:metric}, {cmdab:eq:qualtail}, {cmd:lower}, or {cmd:upper}."
@@ -72,7 +72,7 @@ program define rdboottest, eclass
   restore
 
   if `bc' mata st_numscalar("e(tau_bc_wb)", _rdboottestM.zetastbc * `scalepar')
-else mata st_numscalar("e(tau_bc_wb)", _rdboottestM.zetast * `scalepar')
+     else mata st_numscalar("e(tau_wb)", _rdboottestM.zetast * `scalepar')
   mata st_numscalar("e(p_wb)", _rdboottestM.getp("`ptype'"))
   mata CI = _rdboottestM.getci(`level', "`ptype'")
   mata st_numscalar("e(ci_l_rb_wb)", CI[1+(`scalepar'<0)] * `scalepar')
@@ -80,7 +80,7 @@ else mata st_numscalar("e(tau_bc_wb)", _rdboottestM.zetast * `scalepar')
   mata st_matrix("e(dist_wb)", _rdboottestM.getdist() * `scalepar')
 
   di _n as txt "{hline 19}{c TT}{hline 60}"
-  di as txt "    Wild bootstrap {c |}" _col(22) as res %7.0g cond(`bc', e(tau_bc_wb), e(tau_bc_wb)) _col(52) %4.3f e(p_wb) _col(60) %8.0g e(ci_l_rb_wb) _col(73) %8.0g e(ci_r_rb_wb)
+  di as txt "    Wild bootstrap {c |}" _col(22) as res %7.0g cond(`bc', e(tau_bc_wb), e(tau_wb)) _col(52) %4.3f e(p_wb) _col(60) %8.0g e(ci_l_rb_wb) _col(73) %8.0g e(ci_r_rb_wb)
   di as txt "{hline 19}{c BT}{hline 60}"
   if `bc' di "Bias-corrected. " _c
   di "Bootstrap method of He and Bartalotti (2020)" _n

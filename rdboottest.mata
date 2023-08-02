@@ -21,7 +21,7 @@ class WBSRDD {
   real scalar getp()
   private real colvector bc()
   private void new(), jk()
-  private real matrix fold(), MakeWildWeights(), count_binary()
+  private real matrix fold(), MakeWildWeights(), count_binary(), deletecol()
 }
 
 void WBSRDD::new() {
@@ -29,6 +29,7 @@ void WBSRDD::new() {
 }
 
 real matrix WBSRDD::fold(matrix X) return(uppertriangle(X) + lowertriangle(X,0)')  // fold matrix diagonally; returns same values as a quad form, but runs faster because of all the 0's
+real matrix WBSRDD::deletecol(matrix X, real scalar c) return(c==1? X[|.,2\.,.|] : (c==cols(X)? X[|.,.\.,c-1|] : X[|.,.\.,c-1|], X[|.,c+1\.,.|]))
 
 real colvector triangularkernel  (real scalar bw, real colvector X) return(1:-abs(X)/bw)
 real colvector epanechnikovkernel(real scalar bw, real colvector X) return((1 :- (X/bw):^2 / 5) * .75 / sqrt(5))
@@ -116,11 +117,11 @@ void WBSRDD::Prep(real scalar p, real scalar q, real scalar deriv, real scalar B
       tmp = tmp :* X
       Xp = Xp, tmp  // polynomials in running var
     }
-    Zr = Z, J(N,1,1), Xp, (deriv? D:*Xp[|.,deriv+1\.,.|] : D:*Xp) 
+    Zr = Z, J(N,1,1), Xp, (deriv? D, D:*deletecol(Xp,deriv) : D:*Xp) 
   } else
     Zr = Z, J(N,1,1)
 
-  pW = deriv? &(D :* Xp[,deriv]) : &D  // treatment var of interest
+  pW = deriv? &(D :* Xp[,deriv] / factorial(deriv)) : &D  // treatment var of interest
 
   Xp = J(N,0,0)
   for (g=q;g>p;g--) {  // same for DGP stage with higher-order poly in running var

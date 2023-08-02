@@ -8,7 +8,7 @@ and confidence interval. It will also add these results to e().
 ## Installation
 When more mature, this package will be posted on SSC. For now, install it from Stata with
 ```
-net install rdboottest, from(https://raw.github.com/droodman/rdboottest/v[X.Y.Z])
+net install rdboottest, replace from(https://raw.github.com/droodman/rdboottest/v[X.Y.Z])
 ```
 where "[X.Y.Z]" represents the [latest release version number](https://github.com/droodman/rdboottest/releases).
 
@@ -19,7 +19,7 @@ Install and type `help rdboottest` in Stata.
 ```
 . use https://github.com/rdpackages/rdrobust/raw/master/stata/rdrobust_senate
 
-. rdboottest vote margin
+. rdboottest vote margin, seed(1438)
 
 Sharp RD estimates using local polynomial regression.
 
@@ -42,7 +42,7 @@ Outcome: vote. Running variable: margin.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
-    Wild bootstrap |  7.5531                       0.467    5.23649      9.86963
+    Wild bootstrap |  7.4383                       0.000    4.59704      10.2795
 --------------------------------------------------------------------------------
 Bias-corrected. Bootstrap method of He and Bartalotti (2020)
 ```

@@ -3,7 +3,8 @@ Stata package for bias correction and robust variance estimation in regression d
 
 This Stata command wraps [rdrobust](https://github.com/rdpackages/rdrobust). To use it, replace `rdrobust` in your command lines with
 `rdboottest`. It will run `rdrobust`, show results, and append bootstrap-based estimates of the bias-corrected coefficent, p value,
-and confidence interval. It will also add these results to e().
+and confidence interval. It will add these results to e(), along with the sample marker and other results normally missing from `rdrobust`
+return values.
 
 ## Installation
 When more mature, this package will be posted on SSC. For now, install it from Stata with

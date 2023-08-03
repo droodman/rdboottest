@@ -128,4 +128,4 @@ triangular kernel, jackknifing, equal-tailed confidence intervals, and Rademache
   | 25     3         WBS   0.007   0.055   0.055   0.914 |
   +------------------------------------------------------+
 ```
-G = number of clusters. All simulations have ρ=0.
+G = number of clusters. All simulations have ρ=0. Notes to previous table apply.

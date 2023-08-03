@@ -15,7 +15,6 @@ program define sim, rclass
   gen double X = 2 * rbeta(2,4) - 1
   gen byte T = ut <= invnormal(cond(X<0, .5-`c'/2, .5+`c'/2))
   gen double Y = `ζ'*T + uy + `μ'
-  
   if `g' < `n' {
     gen int clustid = floor((_n-1)/`g') + 1
     local vceopt vce(cluster clustid)
@@ -23,42 +22,53 @@ program define sim, rclass
   }
   else local clustidopt J(0,1,0)
 
-  noi rdboottest Y X, fuzzy(T) bwselect(cerrd) all `vceopt' jk  // occassionally rdrobust crashes...
+  noi rdboottest Y X, fuzzy(T) bwselect(cerrd) all `vceopt' jk ptype(equaltail) weighttype(mammen)  // occassionally rdrobust crashes...
   if _rc exit
 
   return scalar ζhatCL = _b[Conventional]
   return scalar ζhatRBC = _b[Robust]
-  return scalar ILCL  = (e(ci_r_cl) - e(ci_l_cl)) / 2
-  return scalar ILRBC = (e(ci_r_rb) - e(ci_l_rb)) / 2
+  return scalar ζhatWBS = e(tau_bc_wb)
+  return scalar ILCL  = e(ci_r_cl) - e(ci_l_cl)
+  return scalar ILRBC = e(ci_r_rb) - e(ci_l_rb)
+  return scalar ILWBS = e(ci_r_rb_wb) - e(ci_l_rb_wb)
+  return scalar ECCL = e(ci_l_cl) < `ζ' & `ζ' < e(ci_r_cl)
+  return scalar ECRBC = e(ci_l_rb) < `ζ' & `ζ' < e(ci_r_rb)
+  return scalar ECWBS =  e(ci_l_rb_wb) < `ζ' & `ζ' < e(ci_r_rb_wb)
   return scalar hCEO = e(h_l)
   return scalar bCEO = e(b_l)
-  return scalar ζhatWBS = e(tau_bc_wb)
-  return scalar ILWBS = e(ci_r_rb_wb) - e(ci_l_rb_wb)
-  
-  foreach estimator in CL RBC WBS {
-    return scalar EC`estimator' = `ζ' > return(ζhat`estimator') - return(IL`estimator')/2 & `ζ' < return(ζhat`estimator') + return(IL`estimator')/2
-  }
+noi which rdboottest
+noi di as inp `ζ', e(ci_l_rb_wb), e(ci_r_rb_wb)
+asd
   ereturn clear
 end
 
 set seed 204375
-parallel init 6  // use 6 Stata copies
+parallel init 1  // use 6 Stata copies
 
 cap program drop sims
 program define sims
-  syntax anything(name=TableName), [ρs(string) gs(string) reps(integer 5000)]
+  syntax anything(name=TableName), [ρs(string) gs(string) reps(integer 5000) dgps(string)]
+  if "`dgps'"=="" local dgps 1 2 3
 
   cap postclose `TableName'
   postfile `TableName' double ζ ρ G DGP ζhatCL ζhatRBC ζhatWBS ECCL ECRBC ECWBS ILCL ILRBC ILWBS bCEO hCEO SDCL SDRBC SDWBS using sim\\`TableName', every(1) replace
   foreach g in `gs' {
     foreach ρ in `ρs' {
-      forvalues DGP=1/3 {
+      foreach DGP in `dgps' {
         local ζ: word `DGP' of .04 -3.45 .04
         local μ: word `DGP' of "cond(X<0, (1.27+(7.18+(20.21+(21.54+7.33*X)*X)*X)*X)*X, (.84+(-3+(7.99+(-9.01+3.56*X)*X)*X)*X)*X)" ///
                                "cond(X<0, (2.3+(3.28+(1.45+(.23+.03*X)*X)*X)*X)*X, (18.49+(-54.81+(74.3+(-45.0+9.83*X)*X)*X)*X)*X)" ///
                                "cond(X<0, (1.27+(3.59+(14.147+(23.694+10.995*X)*X)*X)*X)*X, (.84+(-.3+(2.397+(-.901+3.56*X)*X)*X)*X)*X)"
-        parallel sim, exp(ζhatCL=r(ζhatCL) ILCL=r(ILCL) ECCL=r(ECCL) ζhatRBC=r(ζhatRBC) ILRBC=r(ILRBC) ECRBC=r(ECRBC) ζhatWBS=r(ζhatWBS) ILWBS=r(ILWBS) ECWBS=r(ECWBS) bCEO=r(bCEO) hCEO=r(hCEO)) proc(2) reps(`reps') nodots : ///
+        local seeds
+        forvalues i=1/$PLL_CLUSTERS {
+          local seeds `seeds' `=runiformint(0,2^20)'
+        }
+
+        parallel sim, seeds(`seeds') noi exp(ζhatCL=r(ζhatCL) ILCL=r(ILCL) ECCL=r(ECCL) ζhatRBC=r(ζhatRBC) ILRBC=r(ILRBC) ECRBC=r(ECRBC) ζhatWBS=r(ζhatWBS) ILWBS=r(ILWBS) ECWBS=r(ECWBS) bCEO=r(bCEO) hCEO=r(hCEO)) proc(2) reps(`reps') nodots : ///
           sim, g(`g') ζ(`ζ') ρ(`ρ') μ(`μ')
+//         simulate ζhatCL=r(ζhatCL) ILCL=r(ILCL) ECCL=r(ECCL) ζhatRBC=r(ζhatRBC) ILRBC=r(ILRBC) ECRBC=r(ECRBC) ζhatWBS=r(ζhatWBS) ILWBS=r(ILWBS) ECWBS=r(ECWBS) bCEO=r(bCEO) hCEO=r(hCEO), reps(`reps') nodots : ///
+//           sim, g(`g') ζ(`ζ') ρ(`ρ') μ(`μ')
+adfa
         collapse ζhat* EC* IL* *CEO (sd) SDCL=ζhatCL SDRBC=ζhatRBC SDWBS=ζhatWBS
         post `TableName' (`ζ') (`ρ') (`g') (`DGP') (ζhatCL) (ζhatRBC) (ζhatWBS) (ECCL) (ECRBC) (ECWBS) (ILCL) (ILRBC) (ILWBS) (bCEO) (hCEO) (SDCL) (SDRBC) (SDWBS)
       }
@@ -67,8 +77,8 @@ program define sims
   postclose `TableName'
 end
 
-sims HBTable1, reps(1000) ρs(0 -.9 .9) gs(1000)
-sims HBTable2, reps(1000) ρs(0) gs(5 10 25)
+sims HBTable1, reps(10) ρs(0) gs(1000) dgps(2)
+sims HBTable2, reps(100) ρs(0) gs(5 10 25)
 
 use sim\HBTable1, clear
 qui foreach estimator in CL RBC WBS {
@@ -88,3 +98,10 @@ qui foreach estimator in CL RBC WBS {
 qui reshape long bias SD RMSE EC IL, i(G DGP *CEO) j(estimator) string
 list G DGP estimator bias SD RMSE EC IL *CEO, sep(0)
 
+set seed 1
+sim, g(1000) ζ(-3.45) ρ(0) μ(cond(X<0, (2.3+(3.28+(1.45+(.23+.03*X)*X)*X)*X)*X, (18.49+(-54.81+(74.3+(-45.0+9.83*X)*X)*X)*X)*X))
+ret list
+//
+// sims t, reps(182) ρs(0) gs(1000) dgps(2)
+// use "D:\OneDrive\Documents\Macros\rdboottest\tmp.dta"
+// scatter ILWBS ILRBC

@@ -2,22 +2,21 @@ mata
 mata clear
 mata set matastrict on
 mata set mataoptimize on
-mata set matalnum off
+mata set matalnum on
 
 struct smatrix {
   real matrix M
 }
 
 class WBSRDD {
-  real scalar fuzzy, N, WWd, WWr, N_G, B1, B2, jk, granularjk, m, dirty, bc, zetast, zetastbc, p, q, v_sd, auxwttype, hasclust
+  real scalar fuzzy, N, WWd, WWr, N_G, B1, B2, jk, granularjk, m, dirty, bc, zetast, zetastbc, p, q, v_sd, auxwttype, hasclust, symwt
   real colvector ZWd, ZWr, Wd, WrKr, MZdWrKr, WdKd, clustid, dist
   pointer(real colvector) scalar pMZdWrKrjk, phalfWrKr
   real matrix info, Zr, Zd, invZZd, invZZr, ZdinvZZd, ZdKd, vbc, vvs
   struct smatrix colvector invMg, Xg, XXg, XinvHg, uddoty, uddott
 
   void Prep(), vs()
-  real colvector getdist()
-  real rowvector getci()
+  real colvector getdist(), getci()
   real scalar getp()
   private real colvector bc()
   private void new(), jk()
@@ -151,6 +150,8 @@ void WBSRDD::Prep(real scalar p, real scalar q, real scalar deriv, real scalar B
   if (.==(this.auxwttype = auxwttype=="rademacher" ? 0 : (auxwttype=="mammen" ? 1 : (auxwttype=="webb" ? 2 : (auxwttype=="normal" ? 3 : (auxwttype=="gamma" ? 4 : .))))))
     _error(198, `"Wild type must be "Rademacher", "Mammen", "Webb", "Normal", or "Gamma"."')
 
+  symwt = auxwttype==0 | auxwttype==2 | auxwttype==3  // aux weights have symmetric distribution?
+  
   vvs = MakeWildWeights(B2, 0)  // one-time: make aux weights for variance-simulation level and set v_sd for v-scaling trick at bc level
   if (!hasclust) vbc = MakeWildWeights(B1, 1)  // if not clustering, generate bc weights once and jumble them indirectly by instead jumbling what they multiply against
   phalfWrKr = v_sd != 1? &(WrKr * v_sd) : &WrKr
@@ -164,7 +165,7 @@ void WBSRDD::Prep(real scalar p, real scalar q, real scalar deriv, real scalar B
     if (fuzzy) uddott[2].M = J(N,1,0)
 
     invH = invsym(H = (ZZd, ZWd \ ZWd', WWd))
-    
+
     if (hasclust) {
       granularjk = (1+kZ)^3 + N_G * (N/N_G*(1+kZ)^2 + (N/N_G)^2*(1+kZ) + (N/N_G)^2 + (N/N_G)^3) < N_G * ((1+kZ)^2*N/N_G + (1+kZ)^3 + 2*(1+kZ)*(1+kZ + N/N_G))
       Xg = smatrix(N_G)
@@ -191,7 +192,7 @@ void WBSRDD::Prep(real scalar p, real scalar q, real scalar deriv, real scalar B
         }
       }
     } else {
-      (invMg = smatrix()).M = sqrt((N - 1) / N) :/ (1 :- rowsum(Z_W * fold(invH) :* Z_W))  // standard hc3 multipliers
+      (invMg = smatrix()).M = sqrt((N - 1) / N) :/ (1 :- rowsum(Z_W * fold(invH) :* Z_W))  // standard hc3 multipliers; HB 2020 doesn't small-sample adjust like here
       pMZdWrKrjk = &(MZdWrKr :* invMg.M)  // trick: when no clustering, jk hat matrix is diagonal; multiply it one time against unchanging factor
     }
   } else
@@ -223,16 +224,18 @@ void WBSRDD::jk(struct smatrix rowvector uddot, real scalar vs) {
 
 // bias-correction step. Logically similar to the variance simulation step (next), but diverges with optimization
 real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
-  real scalar zetahat; real colvector Yd, Td, u; real rowvector zetahatb, Wrustby, Wystb, Wrustbt, Wtstb; pointer(real matrix) scalar pMZdWrKrjku, pMZdWrKru
+  real scalar zetahat, s, zetaddoty, zetaddott; real colvector Yd, Td, u; real rowvector zetahatb, Wrustby, Wystb, Wrustbt, Wtstb; pointer(real matrix) scalar pMZdWrKrjku, pMZdWrKru
 
   Yd = Y - ZdinvZZd * cross(ZdKd, Y)  // FWL
-  uddoty.M = Yd - Wd * (cross(WdKd,Yd) / WWd)
+  zetaddoty = cross(WdKd,Yd) / WWd
+  uddoty.M = Yd - Wd * zetaddoty
   jk(uddoty, 0)
-
   if (fuzzy) {
     Td = T - ZdinvZZd * cross(ZdKd, T)
-    uddott.M = Td - Wd * cross(WdKd,Td) / WWd
+    zetaddott = cross(WdKd,Td) / WWd
+    uddott.M = Td - Wd * zetaddott
     jk(uddott, 0)
+    zetaddoty = zetaddoty / zetaddott
   }
 
   if (hasclust) {  // boottest trick
@@ -256,6 +259,11 @@ real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
       _collate(uddoty.M, u)
       pMZdWrKrjku = &(*pMZdWrKrjk)[u,]
       if (jk) pMZdWrKru = &MZdWrKr[u,]
+      
+      if (symwt & runiform(1,1)<.5) {  // supplement jumbling trick by randomly negating too, for symmetric aux wt types
+        uddoty.M = -uddoty.M
+        if (jk) pMZdWrKru = &(-*pMZdWrKru)
+      }
     }
 
     Wrustby = cross(*pMZdWrKrjku, uddoty.M, vbc)  // Wr'u^{*b}_y computed instead of u^{*b}_y alone, for speed; jk-ing already folded into MZdWrKrjk
@@ -270,7 +278,11 @@ real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
   }
   zetahatb = Wystb :/ (fuzzy? Wtstb : WWr * v_sd)  // replication regressions; "* v_sd" compensates for Rademacher-halving trick
   zetahat = zetahatb[1]  // original-sample linear estimate
-  return(2 * zetahat - (rowsum(zetahatb)-zetahat)/B1)  // bias-corrected estimate
+// if (b==500 | b==499) {
+// "Wystb[423], Wtstb[423], zetahatb[423], Wrustbt[423]"
+//  Wystb[423], Wtstb[423], zetahatb[423], Wrustbt[423]
+// }
+  return(zetahat + zetaddoty - (rowsum(zetahatb)-zetahat)/B1)  // bias-corrected estimate
 }
 
 // variance simulation step
@@ -306,14 +318,16 @@ void WBSRDD::vs(real colvector Y, | real colvector T) {
       tstb = (T - uddott.M) :+ ustbt
     }
   }
-  zetast = cross(WrKr,Y) :/ (fuzzy? cross(WrKr,T) : WWr)  // zeta*, uncorrected estimate for "original" sample at variance-simulating level
+// external colvector bcdist
+// bcdist = J(B2+1,1,0)
+  zetast = cross(WrKr,Y) :/ (fuzzy? cross(WrKr,T) : WWr)  // zeta*, uncorrected estimate for "original" sample at distribution-simulating level
   if (bc) {
     dist = J(B2, 1, 0)
-    zetastbc = fuzzy? bc(1, ystb[,1], tstb[,1]) : bc(1, ystb[,1])  // bias-corrected estimate in "original" bs sample, zeta* - Δ*ᵢ
-    for (b=2; b<=B2+1; b++) {
+    /*bcdist[1] =*/ zetastbc = fuzzy? bc(1, ystb[,1], tstb[,1]) : bc(1, ystb[,1])  // bias-corrected estimate in "original" bs sample, zeta* - Δ*ᵢ
+      for (b=2; b<=B2+1; b++) {
 //       printf("."); if (!mod(b-1,50)) printf("\n")
 //       displayflush()
-      dist[b-1] = (fuzzy? bc(b, ystb[,b], tstb[,b]) : bc(b, ystb[,b])) - zetast // deviations of bias-corrected estimates from uncorrected estimate in "original" bs sample zetâ ᵢ - Δ**ᵢ - zeta* (algorithm 3.2, step 3)
+      dist[b-1] = (/*bcdist[b] =*/ (fuzzy? bc(b, ystb[,b], tstb[,b]) : bc(b, ystb[,b]))) - zetast // deviations of bias-corrected estimates from uncorrected estimate in "original" bs sample zetâ ᵢ - Δ**ᵢ - zeta* (algorithm 3.2, step 3)
     }
 //     printf("\n")
   } else {
@@ -329,7 +343,7 @@ real scalar WBSRDD::getp(| string scalar ptype) {
   if (ptype=="symmetric" | ptype=="")
     return(colsum(0 :< -abs(zetastbc :+ dist)) / B2)
   if (ptype=="equaltail")
-    return(2 * min((colsum(dist :< 0) , colsum(dist :> 0))) / B2)
+    return(2 * min((colsum(zetastbc :+ dist :< 0) , colsum(zetastbc :+ dist :> 0))) / B2)
   if (ptype=="lower")
     return(colsum(dist :< 0) / B2)
   if (ptype=="upper")
@@ -337,17 +351,21 @@ real scalar WBSRDD::getp(| string scalar ptype) {
   _error(198, `"p type must be "symmetric", "equaltail", "lower", or "upper"."')
 }
 
-real rowvector WBSRDD::getci(real scalar level, | string scalar citype) {
+real colvector WBSRDD::getci(real scalar level, | string scalar ptype) {
   real scalar halfwidth; real colvector absdist
-  if (citype=="symmetric" | citype=="") {
+  if (ptype=="symmetric" | ptype=="") {
     absdist = abs(dist)
     _sort(absdist,1)
     halfwidth = absdist[round(level/100 * B2)]
-    return((zetastbc-halfwidth, zetastbc+halfwidth))
+    return(zetastbc-halfwidth \ zetastbc+halfwidth)
   }
-  if (citype=="equaltail")
-    return((zetastbc-dist[round((1-level/100)/2 * B2)], zetastbc+dist[round((1-(1-level/100)/2) * B2)]))
-  _error(198, `"CI type must be "symmetric" or "equaltail"."')
+  if (ptype=="equaltail")
+    return(zetastbc :+ dist[round(((1-level/100)/2, 1-(1-level/100)/2) * B2)])
+  if (ptype=="lower")
+    return(. \ zetastbc + dist[round((1-(1-level/100)) * B2)])
+  if (ptype=="upper")
+    return(zetastbc + dist[round((1-level/100) * B2)] \ .)
+  _error(198, `"CI type must be "symmetric", "equaltail", "lower", or "upper"."')
 }
 
 mata mlib create lrdboottest, dir("`c(sysdir_plus)'l") replace

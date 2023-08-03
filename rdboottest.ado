@@ -12,6 +12,16 @@ program define rdboottest, eclass
 		exit 198
 	}
 
+  local jk = "`jk'`jackknife'"!=""
+  local bc = "`bc'"==""
+
+  marksample touse
+  markout `touse' `weights' `fuzzy' `covs'
+  
+  rdrobust `varlist' `if' `in', c(`c') scalepar(`scalepar') fuzzy(`fuzzy') weights(`weights') covs(`covs') level(`level') deriv(`deriv') `options'
+  ereturn local fuzzy `fuzzy'
+  ereturn local deriv `deriv'
+
 	if "`ptype'"'=="" local ptype symmetric
 	else {
 		local 0, `ptype'
@@ -29,16 +39,6 @@ program define rdboottest, eclass
 		syntax, [RADemacher MAMmen NORmal WEBb GAMma]
 		local weighttype `rademacher'`mammen'`normal'`webb'`gamma'
 	}
-
-  local jk = "`jk'`jackknife'"!=""
-  local bc = "`bc'"==""
-
-  marksample touse
-  markout `touse' `weights' `fuzzy' `covs'
-  
-  rdrobust `varlist' `if' `in', c(`c') scalepar(`scalepar') fuzzy(`fuzzy') weights(`weights') covs(`covs') level(`level') deriv(`deriv') `options'
-  ereturn local fuzzy `fuzzy'
-  ereturn local deriv `deriv'
 
   preserve
   qui keep if `touse' & `e(runningvar)' > `c'-max(e(h_l), e(b_l)) & `e(runningvar)' < `c'+max(e(h_r), e(b_r))

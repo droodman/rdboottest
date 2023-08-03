@@ -55,7 +55,7 @@ Gelman and Imbens 2019; Pei et al. 2020; Kettlewell and Siminksi 2022 ({stata ss
 Bartalotti (2020), departs from this literature somewhat in exploiting the bootstrap to estimate both bias and variance. (I will refer to the latter paper
 since it generalizes from the first.) Bootstrapping is appealing because it reduces reliance on asymptotic
 theory to justify various complex bias and variance estimators. And the wild bootstrap is attractive in its ability to preserve traits of the original data, such as observation- and cluster-
-specific variance structurs. The method of He and Bartalotti does not of course resolve the fundamental challenge of RDD noted above. In fact, as proposed and as implemented here, it
+specific variance structures. The method of He and Bartalotti does not of course resolve the fundamental challenge of RDD noted above. In fact, as proposed and as implemented here, it
 relies on the non-bootstrap CCT method for bandwidth selection.
 
 {pstd}
@@ -64,11 +64,11 @@ Cameron, Gelbach, and Miller (2008) or Roodman et al. (2019). Stata implementati
 {help wildbootstrap:wildbootstrap}.) From that starting point, He and Bartalotti introduce several modifications:
 
 {p 4 7 0}1. It is a double bootstrap. A collection of simulated data sets in generated, and the researcher's estimator is applied to each, in order to empirically
-estimate the variance. But before results such as {it:p} values and confidence intervals are extracted, each of these bootstrap estimates is bias-corrected
-through a second layer of "wild" simulation (Horowitz 2001, p. 3172). For example, in the first iteration of the upper, "variance-simulation" level, a 
+estimate the distribution. But before results such as {it:p} values and confidence intervals are extracted, each of these bootstrap estimates is bias-corrected
+through a second layer of wild simulation (Horowitz 2001, p. 3172). For example, in the first iteration of the upper, distribution-simulation level, a 
 researcher's estimator could return 1.24. 1000 wild-bootstrap data sets are then constructed in which 1.24 is the true parameter value. If the researcher's
 estimator returns 1.26 on average in these data sets, that points to a bias of +0.02, which is then subtracted from the original 1.24, yielding 1.22. The
-run time of the double bootstrap is therefore proprortional to the product of the number of iterations at the variance-simulation and bias-correction levels. 
+run time of the double bootstrap is therefore proprortional to the product of the number of iterations at the distribution-simulation and bias-correction levels. 
 
 {p 4 7 0}2. Separately, and in general, as a paremetric bootstrap, the wild bootstrap is itself a two-stage process. An initial 
 (data-generating process or DGP) regression is run as part of the process for constructing simulated data sets to which the researcher's specfication is applied
@@ -83,19 +83,19 @@ bootstrap-t.
 {p 4 7 0}4. To reduce the influence of outliers, residuals from DGP regressions are jackknifed--individually or cluster-wise, as appropriate. (Jackknifing has been
 added to {cmd:boottest} since Roodman et al. (2019); see MacKinnon, Nielsen, and Webb (2023))
 
-{p 4 7 0}5. The method of Calonico, Cattaneo, and Titiiuk (2014) and Calonico, Cattaneo, and Farrell (2022) is used to select bandwidths. These
+{p 4 7 0}5. The method of Calonico, Cattaneo, and Titiniuk (2014) and Calonico, Cattaneo, and Farrell (2022) is used to select bandwidths. These
 bandwidths, along with the researcher's kernel shape (triangular, Epanechnikov, rectangular), are incorporated into the DGP and replication regressions of the wild
 bootstrap.
 
 {pstd}
-The method can be applied to sharp and fuzzy RDD. But since fuzzy RDD is an exactly-identified instrumental variables estimator, it
+The method applies to sharp and fuzzy RDD. But since fuzzy RDD is an exactly-identified instrumental variables estimator, it
 has no first moment. Its bias does not formally exist. It is ratio of the impact of crossing the threshold on the outcome to the impact on the treatment variable
 and if there is substantial distributional mass for the latter near zero, the ratio is unstable. As a practical matter, 
 bias-correction can be destabilizing when the discontinuity in treatment variable is not statistically clear.
 
 {pstd}
 Because the algorithm uses CCT bandwidths, and because {cmd:rdrobust} does not save all aspects of a user's specification in e() results, {cmd:rdboottest}
-is wrapper for {cmd:rdrobust} rather than a post-estimation command. It starts by calling {cmd:rdrobust} and adds bootstrap results to the output
+is a wrapper for {cmd:rdrobust} rather than a post-estimation command. It starts by calling {cmd:rdrobust}, then adds bootstrap results to the output
 and the e() results.
 
 {pstd}
@@ -103,6 +103,9 @@ and the e() results.
 and estimation regressions. It also works when the left and right bandwidths differ. And it works for kink designs, requested through {cmd:rdrobust}'s {cmd:deriv()},
 although this functionality has not been tested with simulations.
 
+{pstd}
+He and Bartalotti (2020)'s preferred method jackknifes residuals and forms {help rdboottest##ptype:equal-tail} confidence intervals (see Davidson and MacKinnon 2010). Request these
+choices from {cmd:rdboottest} with {cmd:jk ptype(equaltail)}.
 
 {marker options}{...}
 {title:Options}
@@ -113,13 +116,14 @@ although this functionality has not been tested with simulations.
 fit for each observation, or within each cluster, is computed using only the data from all
 the other observations or clusters. He and Bartalotti (2020)'s simulation results incorporate jackknifing.
 
-{phang}{opt rep:s(#)} sets the number of replications at the variance-sampling stage. The default is 999. Especially when clusters are few, increasing this number costs little in run 
+{phang}{opt rep:s(#)} sets the number of replications at the distribution-simulation stage. The default is 999. Especially when clusters are few, increasing this number costs little in run 
 time.
 
 {phang}{opt bcrep:s(#)} sets the number of replications at the bias-correction stage. The default is 500. Since run time is proportional to the product of the {cmdab:rep:s(#)}
 and {cmdab:bcrep:s(#)} options, and can be high in some cases, the question arises of which option to set higher. A general principle is that acturately estimating second moments
 through simulation takes more replications than first moments. This argues in the direction of higher {cmdab:rep:s(#)} and lower {cmdab:bcrep:s(#)}
 
+{marker ptype}{...}
 {phang}{opt p:type(symmetric | equaltail | lower | upper)} sets the p value type. The default, {it:symmetric}, has the p value derived from the
 square of the {it:t}/{it:z} statistic, or, equivalently, the absolute value. {it:equaltail} performs a two-tailed test using the {it:t}/{it:z} statistic. For example, 
 if the confidence level is 95, then the symmetric p value is less than 0.05 if the square of the test statistic is in the top 5 centiles of the corresponding bootstrapped 
@@ -141,7 +145,7 @@ Webb weights are probably better.
 
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Scalars}{p_end}
-{synopt:{cmd:e(reps)}}number of bootstrap replications for variance simulation{p_end}
+{synopt:{cmd:e(reps)}}number of bootstrap replications for distribution simulation{p_end}
 {synopt:{cmd:e(bcreps)}}number of bootstrap replications for bias correction{p_end}
 {synopt:{cmd:e(p_bs)}}bootstrap p value that the parameter of interest is 0{p_end}
 {synopt:{cmd:e(bc_wb)}}0/1 indicating whether bias correction was performed in bootstrapping{p_end}
@@ -180,6 +184,7 @@ Webb weights are probably better.
 {p 4 8 2}Calonico, Sebastian, M.D. Cattaneo, and M.H. Farrell. 2022. Coverage Error Optimal Confidence Intervals for Local Polynomial Regression. Bernoulli 28 (4) 2998-3022, November. https://doi.org/10.3150/21-BEJ1445.{p_end}
 {p 4 8 2}Calonico, Sebastian, Matias D. Cattaneo, and Rocio Titiunik. 2014. Robust Nonparametric Confidence Intervals for Regression-Discontinuity Designs. Econometrica: Journal of the Econometric Society 82 (6): 2295–2326. https://doi.org/10.3982/ecta11757.{p_end}
 {p 4 8 2}Cameron, A.C., J.B. Gelbach, and D.L. Miller. 2008. Bootstrap-based improvements for inference with clustered errors.{p_end}
+{p 4 8 2}Davidson, R., and J.G. MacKinnon. 2010. Wild bootstrap tests for IV regression. {it:Journal of Business & Economic Statistics} 28(1): 128-44.{p_end}
 {p 4 8 2}Gelman, Andrew, and Guido Imbens. 2019. Why High-Order Polynomials Should Not Be Used in Regression Discontinuity Designs. Journal of Business & Economic Statistics: A Publication of the American Statistical Association 37 (3): 447–56. https://doi.org/10.1080/07350015.2017.1366909.{p_end}
 {p 4 8 2}He, Y., and O. Bartalotti. 2020. Wild Bootstrap for Fuzzy Regression Discontinuity Designs: Obtaining Robust Bias-Corrected Confidence Intervals. The Econometrics Journal 23 (2): 211–31. https://doi.org/10.1093/ectj/utaa002.{p_end}
 {p 4 8 2}Horowitz, J.L. 2001. Chapter 52 - The Bootstrap. In Handbook of Econometrics, edited by James J. Heckman and Edward Leamer, 5:3159–3228. Elsevier. https://doi.org/10.1016/S1573-4412(01)05005-X.{p_end}

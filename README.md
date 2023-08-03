@@ -90,5 +90,5 @@ by `rdrobust` with the `bwselect(cerrd)` option; and the wild bootstrap, using t
   +-------------------------------------------------------+
 ```
 Notes: ρ = correlation between first and second-stage errors. DGP is a data-generating process defined in He and Bartalotti (2020).
-SD = standard deviation. RMSE = root-mean-square error. EC = empirical coverage ratio, which is ideally 0.95. All bootstrsap estimates use a
+SD = standard deviation. RMSE = root-mean-square error. EC = empirical coverage, which is ideally 0.95. All bootstrap estimates use a
 triangular kernel, jackknifing, equal-tailed confidence intervals, and Rademacher weights. 1000 simulations are run for each case (each row).

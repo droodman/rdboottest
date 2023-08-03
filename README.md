@@ -52,8 +52,10 @@ Bias-corrected. Bootstrap method of He and Bartalotti (2020)
 # Simulation evidence
 Emulating Tables 1 and 2 of He and Bartalotti (2020), this table shows the bias, standard deviation, root-mean-squared error,
 and empirical coverage (size) of three estimators. The three are conventional (CL) and robust bias-corrected (RBC), both as produced
-by `rdrobust` with the `bwselect(cerrd)` option; and the wild bootstrap, using the same bandwidths
+by `rdrobust` with the `bwselect(cerrd)` option; and the wild bootstrap, using the same bandwidths.
 
+
+### Fuzzy RDD, non-clustered data, 1000 observations
 ```
   +-------------------------------------------------------+
   |   ρ   DGP   estimator    bias      SD    RMSE      EC |
@@ -89,4 +91,4 @@ by `rdrobust` with the `bwselect(cerrd)` option; and the wild bootstrap, using t
 ```
 Notes: ρ = correlation between first and second-stage errors. DGP is a data-generating process defined in He and Bartalotti (2020).
 SD = standard deviation. RMSE = root-mean-square error. EC = empirical coverage ratio, which is ideally 0.95. All bootstrsap estimates use a
-triangular kernel, jackknifing, equal-tailed confidence intervals, and Rademacher weights.
+triangular kernel, jackknifing, equal-tailed confidence intervals, and Rademacher weights. 1000 simulations are run for each case (each row).

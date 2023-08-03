@@ -74,8 +74,8 @@ run time of the double bootstrap is therefore proprortional to the product of th
 (data-generating process or DGP) regression is run as part of the process for constructing simulated data sets to which the researcher's specfication is applied
 (replication regressions). In the usual wild bootstrap for linear models, the DGP regression specification is the same as the replication specification, or is restricted
 by imposoition of the researcher's null hypothesis. In the He and Bartalotti adaption, roles are reversed. The DGP specification is that used by CCT to estimate bias,
-typically with quadratic-polynomial controls in the running variable on each of the threshold and the CCT bandwidth. The researcher's null is not imposed. The replication
-regressions are still necessarily the same as the researchers, which typically will mean use of linear controls and a distinct bandwidth.
+typically with quadratic-polynomial controls in the running variable on each of the threshold and the CCT bandwidth. The null of zero effect is imposed. The replication
+regressions are still necessarily the same as the researcher's, which typically will mean use of linear controls and a distinct bandwidth.
 
 {p 4 7 0}3. The object of the bootstrap is not a pivotal statistic such as a {it:t}, but the coefficient of interest. In other words, the method is bootstrap-c rather than
 bootstrap-t.
@@ -84,8 +84,11 @@ bootstrap-t.
 added to {cmd:boottest} since Roodman et al. (2019); see MacKinnon, Nielsen, and Webb (2023))
 
 {p 4 7 0}5. The method of Calonico, Cattaneo, and Titiniuk (2014) and Calonico, Cattaneo, and Farrell (2022) is used to select bandwidths. These
-bandwidths, along with the researcher's kernel shape (triangular, Epanechnikov, rectangular), are incorporated into the DGP and replication regressions of the wild
+bandwidths, along with the researcher's choice of kernel form (triangular, Epanechnikov, rectangular), are incorporated into the DGP and replication regressions of the wild
 bootstrap.
+
+{p 4 7 0}6. In the case of fuzzy RDD, which is an instance of instrumental variables (IV) estimation, an element of the standard wild bootstrap for IV, the Wild Restricted Efficient (WRE) bootstrap
+(Davidson and MacKinnon 2010), is not incorporated. That refinement accounts for the "E" in "WRE."
 
 {pstd}
 The method applies to sharp and fuzzy RDD. But since fuzzy RDD is an exactly-identified instrumental variables estimator, it

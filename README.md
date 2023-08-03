@@ -20,7 +20,7 @@ Install and type `help rdboottest` in Stata.
 ```
 . use https://github.com/rdpackages/rdrobust/raw/master/stata/rdrobust_senate
 
-. rdboottest vote margin, seed(1438)
+. rdboottest vote margin, seed(71438) jk ptype(equaltail)
 
 Sharp RD estimates using local polynomial regression.
 
@@ -43,7 +43,7 @@ Outcome: vote. Running variable: margin.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
-    Wild bootstrap |  7.4383                       0.000    4.59704      10.2795
+    Wild bootstrap |  7.5839                       0.000    4.13822      11.2495
 --------------------------------------------------------------------------------
 Bias-corrected. Bootstrap method of He and Bartalotti (2020)
 ```

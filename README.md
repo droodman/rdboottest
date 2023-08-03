@@ -17,7 +17,7 @@ where `X.Y.Z` represents the [latest release version number](https://github.com/
 Install and type `help rdboottest` in Stata.
 
 ## Example
-As in He and Bartalotti (2020), this example [jackknifes residuals used in the bootstrap](https://onlinelibrary.wiley.com/doi/full/10.1002/jae.2969) and constructs an equal-tailed 95% confidence interval, in which 2.5% of the distribution lies beyond either end. It defaults to Rademacher weights.
+As in He and Bartalotti (2020), this example [jackknifes residuals used in the bootstrap](https://onlinelibrary.wiley.com/doi/full/10.1002/jae.2969) and constructs an _equal-tailed_ 95% confidence interval, in which 2.5% of the distribution lies beyond either end. It defaults to Rademacher weights.
 ```
 . use https://github.com/rdpackages/rdrobust/raw/master/stata/rdrobust_senate
 

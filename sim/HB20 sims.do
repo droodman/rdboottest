@@ -1,3 +1,5 @@
+* uses "rdrobust", "parallel", and "rdboottest" packages
+
 cd D:\OneDrive\Documents\Macros\rdboottest
 
 set rmsg on
@@ -61,8 +63,6 @@ program define sims
 
         parallel sim, seeds(`seeds') exp(ζhatCL=r(ζhatCL) ILCL=r(ILCL) ECCL=r(ECCL) ζhatRBC=r(ζhatRBC) ILRBC=r(ILRBC) ECRBC=r(ECRBC) ζhatWBS=r(ζhatWBS) ILWBS=r(ILWBS) ECWBS=r(ECWBS) bCEO=r(bCEO) hCEO=r(hCEO)) proc(2) reps(`reps') nodots : ///
           sim, g(`g') ζ(`ζ') ρ(`ρ') μ(`μ')
-//         simulate ζhatCL=r(ζhatCL) ILCL=r(ILCL) ECCL=r(ECCL) ζhatRBC=r(ζhatRBC) ILRBC=r(ILRBC) ECRBC=r(ECRBC) ζhatWBS=r(ζhatWBS) ILWBS=r(ILWBS) ECWBS=r(ECWBS) bCEO=r(bCEO) hCEO=r(hCEO), reps(`reps') nodots : ///
-//           sim, g(`g') ζ(`ζ') ρ(`ρ') μ(`μ')
         collapse ζhat* EC* IL* *CEO (sd) SDCL=ζhatCL SDRBC=ζhatRBC SDWBS=ζhatWBS
         post `TableName' (`ζ') (`ρ') (`g') (`DGP') (ζhatCL) (ζhatRBC) (ζhatWBS) (ECCL) (ECRBC) (ECWBS) (ILCL) (ILRBC) (ILWBS) (bCEO) (hCEO) (SDCL) (SDRBC) (SDWBS)
       }
@@ -81,7 +81,8 @@ qui foreach estimator in CL RBC WBS {
   drop ζhat`estimator'
 }
 qui reshape long bias SD RMSE EC IL, i(ρ DGP *CEO) j(estimator) string
-list ρ DGP estimator bias SD RMSE EC IL *CEO, sep(0)
+format %5.3f bias SD RMSE EC IL
+list ρ DGP estimator bias SD RMSE EC, sep(0) compress abbrev(20) noobs
 
 use sim\HBTable2, clear
 qui foreach estimator in CL RBC WBS {
@@ -90,12 +91,5 @@ qui foreach estimator in CL RBC WBS {
   drop ζhat`estimator'
 }
 qui reshape long bias SD RMSE EC IL, i(G DGP *CEO) j(estimator) string
-list G DGP estimator bias SD RMSE EC IL *CEO, sep(0)
-
-// set seed 1
-// sim, g(1000) ζ(-3.45) ρ(0) μ(cond(X<0, (2.3+(3.28+(1.45+(.23+.03*X)*X)*X)*X)*X, (18.49+(-54.81+(74.3+(-45.0+9.83*X)*X)*X)*X)*X))
-// ret list
-//
-// sims t, reps(182) ρs(0) gs(1000) dgps(2)
-// use "D:\OneDrive\Documents\Macros\rdboottest\tmp.dta"
-// scatter ILWBS ILRBC
+format %5.3f bias SD RMSE EC IL
+list G DGP estimator bias SD RMSE EC, sep(0) compress abbrev(20) noobs

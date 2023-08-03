@@ -278,10 +278,6 @@ real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
   }
   zetahatb = Wystb :/ (fuzzy? Wtstb : WWr * v_sd)  // replication regressions; "* v_sd" compensates for Rademacher-halving trick
   zetahat = zetahatb[1]  // original-sample linear estimate
-// if (b==500 | b==499) {
-// "Wystb[423], Wtstb[423], zetahatb[423], Wrustbt[423]"
-//  Wystb[423], Wtstb[423], zetahatb[423], Wrustbt[423]
-// }
   return(zetahat + zetaddoty - (rowsum(zetahatb)-zetahat)/B1)  // bias-corrected estimate
 }
 
@@ -318,16 +314,15 @@ void WBSRDD::vs(real colvector Y, | real colvector T) {
       tstb = (T - uddott.M) :+ ustbt
     }
   }
-// external colvector bcdist
-// bcdist = J(B2+1,1,0)
+
   zetast = cross(WrKr,Y) :/ (fuzzy? cross(WrKr,T) : WWr)  // zeta*, uncorrected estimate for "original" sample at distribution-simulating level
   if (bc) {
     dist = J(B2, 1, 0)
-    /*bcdist[1] =*/ zetastbc = fuzzy? bc(1, ystb[,1], tstb[,1]) : bc(1, ystb[,1])  // bias-corrected estimate in "original" bs sample, zeta* - Δ*ᵢ
+    zetastbc = fuzzy? bc(1, ystb[,1], tstb[,1]) : bc(1, ystb[,1])  // bias-corrected estimate in "original" bs sample, zeta* - Δ*ᵢ
       for (b=2; b<=B2+1; b++) {
 //       printf("."); if (!mod(b-1,50)) printf("\n")
 //       displayflush()
-      dist[b-1] = (/*bcdist[b] =*/ (fuzzy? bc(b, ystb[,b], tstb[,b]) : bc(b, ystb[,b]))) - zetast // deviations of bias-corrected estimates from uncorrected estimate in "original" bs sample zetâ ᵢ - Δ**ᵢ - zeta* (algorithm 3.2, step 3)
+      dist[b-1] = (fuzzy? bc(b, ystb[,b], tstb[,b]) : bc(b, ystb[,b])) - zetast // deviations of bias-corrected estimates from uncorrected estimate in "original" bs sample zetâ ᵢ - Δ**ᵢ - zeta* (algorithm 3.2, step 3)
     }
 //     printf("\n")
   } else {

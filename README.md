@@ -92,3 +92,40 @@ by `rdrobust` with the `bwselect(cerrd)` option; and the wild bootstrap, using t
 Notes: ρ = correlation between first and second-stage errors. DGP is a data-generating process defined in He and Bartalotti (2020).
 SD = standard deviation. RMSE = root-mean-square error. EC = empirical coverage, which is ideally 0.95. All bootstrap estimates use a
 triangular kernel, jackknifing, equal-tailed confidence intervals, and Rademacher weights. 1000 simulations are run for each case (each row).
+
+### Fuzzy RDD, clustered data, 1000 observations
+
+```
+  +------------------------------------------------------+
+  |  G   DGP   estimator    bias      SD    RMSE      EC |
+  |------------------------------------------------------|
+  |  5     1          CL   0.016   0.048   0.050   0.927 |
+  |  5     1         RBC   0.012   0.052   0.053   0.942 |
+  |  5     1         WBS   0.012   0.051   0.053   0.935 |
+  |  5     2          CL   0.077   0.070   0.104   0.662 |
+  |  5     2         RBC   0.024   0.063   0.068   0.902 |
+  |  5     2         WBS   0.022   0.063   0.066   0.937 |
+  |  5     3          CL   0.009   0.051   0.052   0.938 |
+  |  5     3         RBC   0.010   0.059   0.060   0.940 |
+  |  5     3         WBS   0.011   0.069   0.070   0.932 |
+  | 10     1          CL   0.019   0.049   0.053   0.893 |
+  | 10     1         RBC   0.015   0.054   0.056   0.914 |
+  | 10     1         WBS   0.015   0.053   0.055   0.901 |
+  | 10     2          CL   0.081   0.065   0.104   0.628 |
+  | 10     2         RBC   0.027   0.060   0.065   0.902 |
+  | 10     2         WBS   0.025   0.059   0.065   0.951 |
+  | 10     3          CL   0.006   0.047   0.048   0.936 |
+  | 10     3         RBC   0.007   0.052   0.053   0.943 |
+  | 10     3         WBS   0.007   0.052   0.052   0.932 |
+  | 25     1          CL   0.020   0.047   0.051   0.913 |
+  | 25     1         RBC   0.015   0.052   0.054   0.934 |
+  | 25     1         WBS   0.015   0.051   0.054   0.918 |
+  | 25     2          CL   0.084   0.069   0.109   0.613 |
+  | 25     2         RBC   0.024   0.062   0.067   0.904 |
+  | 25     2         WBS   0.023   0.061   0.066   0.917 |
+  | 25     3          CL   0.006   0.049   0.050   0.931 |
+  | 25     3         RBC   0.007   0.055   0.055   0.929 |
+  | 25     3         WBS   0.007   0.055   0.055   0.914 |
+  +------------------------------------------------------+
+```
+G = number of clusters. All simulations have ρ=0.

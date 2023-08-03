@@ -22,7 +22,7 @@ program define sim, rclass
   }
   else local clustidopt J(0,1,0)
 
-  cap noi rdboottest Y X, fuzzy(T) bwselect(cerrd) all `vceopt' jk ptype(equaltail) weighttype(mammen)  // occassionally rdrobust crashes...
+  cap noi rdboottest Y X, fuzzy(T) bwselect(cerrd) all `vceopt' jk ptype(equaltail) /*weighttype(mammen)*/  // occassionally rdrobust crashes...
   if _rc exit
 
   return scalar ζhatCL = _b[Conventional]

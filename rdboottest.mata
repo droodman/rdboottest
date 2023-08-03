@@ -2,7 +2,7 @@ mata
 mata clear
 mata set matastrict on
 mata set mataoptimize on
-mata set matalnum on
+mata set matalnum off
 
 struct smatrix {
   real matrix M
@@ -239,12 +239,11 @@ real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
   }
 
   if (hasclust) {  // boottest trick
-    vbc = MakeWildWeights(B1, 1)  // Rademacher weights for *all* replications; halved for speed of generation
-
+    vbc = MakeWildWeights(B1, 1)  // auxiliary weights for *all* replications
     Wrustby = cross(panelsum(MZdWrKr, uddoty[1+jk].M, info), vbc)  // Wr'u^{*b}_y computed instead of u^{*b}_y alone, for speed
 
     if (jk) Wrustby[1] = cross(MZdWrKr, uddoty.M) * v_sd  // fix: original-sample ust is non-jk'd uddot; "* v_sd" for consistency with weight-scaling trick
-    Wystb = (cross(*phalfWrKr,Y) - Wrustby[1]) :+ Wrustby  // Wr ' (*un*-FWL'd endog vars); "half" compensates for Rademacher-halving trick
+    Wystb = (cross(*phalfWrKr,Y) - Wrustby[1]) :+ Wrustby  // Wr ' (*un*-FWL'd endog vars); "half" compensates for Rademacher-halving trick, or other such scaling
     if (fuzzy) {
       Wrustbt = cross(panelsum(MZdWrKr, uddott.M, info), vbc)
       if (jk) Wrustbt[1] = cross(MZdWrKr, uddott.M) * v_sd
@@ -257,21 +256,30 @@ real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
     } else {
       u = unorder(N)  // for additional speed, instead jumble the matrices v is multiplied against
       _collate(uddoty.M, u)
+      if (fuzzy) _collate(uddott.M, u)
       pMZdWrKrjku = &(*pMZdWrKrjk)[u,]
-      if (jk) pMZdWrKru = &MZdWrKr[u,]
-      
+      if (jk) {
+        pMZdWrKru = &MZdWrKr[u,]
+        _collate(uddoty[2].M, u)
+        if (fuzzy) _collate(uddott[2].M, u)
+      }
       if (symwt & runiform(1,1)<.5) {  // supplement jumbling trick by randomly negating too, for symmetric aux wt types
         uddoty.M = -uddoty.M
-        if (jk) pMZdWrKru = &(-*pMZdWrKru)
+        if (fuzzy) uddott.M = -uddott.M
+        if (jk) {
+          pMZdWrKru = &(-*pMZdWrKru)
+          _collate(uddott[2].M, u)
+          if (fuzzy) _collate(uddott[2].M, u)
+        }
       }
     }
 
-    Wrustby = cross(*pMZdWrKrjku, uddoty.M, vbc)  // Wr'u^{*b}_y computed instead of u^{*b}_y alone, for speed; jk-ing already folded into MZdWrKrjk
+    Wrustby = cross(*pMZdWrKrjku, uddoty[1+jk].M, vbc)  // Wr'u^{*b}_y computed instead of u^{*b}_y alone, for speed; jk-ing already folded into MZdWrKrjk
     if (jk) Wrustby[1] = cross(*pMZdWrKru, uddoty.M) * v_sd
     Wystb = (cross(*phalfWrKr,Y) - Wrustby[1]) :+ Wrustby  // Wr ' (un-FWL'd endog vars); "half" compensates for Rademacher-halving trick
 
     if (fuzzy) {
-      Wrustbt = cross(*pMZdWrKrjku, uddott.M, vbc)
+      Wrustbt = cross(*pMZdWrKrjku, uddott[1+jk].M, vbc)
       if (jk) Wrustbt[1] = cross(*pMZdWrKru, uddott.M) * v_sd
       Wtstb = (cross(*phalfWrKr,T) - Wrustbt[1]) :+ Wrustbt
     }
@@ -281,7 +289,7 @@ real colvector WBSRDD::bc(real scalar b, real colvector Y, | real colvector T) {
   return(zetahat + zetaddoty - (rowsum(zetahatb)-zetahat)/B1)  // bias-corrected estimate
 }
 
-// variance simulation step
+// distribution simulation step
 void WBSRDD::vs(real colvector Y, | real colvector T) {
   real scalar b; real colvector Yd, Td; real matrix _v, ustby, ustbt, ystb, tstb
 

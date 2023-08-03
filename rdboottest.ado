@@ -5,7 +5,7 @@ program define rdboottest, eclass
   local cmdline `0'
 
   syntax varlist [if] [in], [c(real 0) scalepar(real 1) Level(real `c(level)') fuzzy(varname) weights(string) covs(string) deriv(integer 0) ///
-                             seed(string) JACKknife jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) WEIGHTtype(string) *]
+                             seed(string) JACKknife jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) *]
   
   if `:word count `ptype'' > 1 {
 		di as err "The {cmd:wp:type} option must be {cmdab:sym:metric}, {cmdab:eq:qualtail}, {cmd:lower}, or {cmd:upper}."
@@ -56,7 +56,7 @@ program define rdboottest, eclass
     local clustidopt st_data(.,"`clustid'")
   }
   else local clustidopt J(0,1,0)
-  
+
   local covsopt = cond("`covs'"   =="", "J(`=_N',0,0)", "`st_data(.,"`covs'")'")
   local wtopt   = cond("`weights'"=="", "J(0,1,0)"    , "`st_data(.,"`weights'")'")
 

@@ -6,7 +6,7 @@ program define rdboottest, eclass
 
   syntax varlist [if] [in], [c(real 0) scalepar(real 1) Level(real `c(level)') fuzzy(varname) weights(string) covs(string) deriv(integer 0) ///
                              seed(string) JACKknife jk nobc REPs(integer 999) BCREPs(integer 500) WEIGHTtype(string) PType(string) *]
-  
+
   if `:word count `ptype'' > 1 {
 		di as err "The {cmd:wp:type} option must be {cmdab:sym:metric}, {cmdab:eq:qualtail}, {cmd:lower}, or {cmd:upper}."
 		exit 198
@@ -57,8 +57,8 @@ program define rdboottest, eclass
   }
   else local clustidopt J(0,1,0)
 
-  local covsopt = cond("`covs'"   =="", "J(`=_N',0,0)", "`st_data(.,"`covs'")'")
-  local wtopt   = cond("`weights'"=="", "J(0,1,0)"    , "`st_data(.,"`weights'")'")
+  local covsopt = cond("`covs'"   =="", "J(`=_N',0,0)", `"st_data(.,"`covs'")"')
+  local wtopt   = cond("`weights'"=="", "J(0,1,0)"    , `"st_data(.,"`weights'")"')
 
   if `"`seed'"'!="" {
     set seed `seed'
@@ -72,7 +72,7 @@ program define rdboottest, eclass
   restore
 
   if `bc' mata st_numscalar("e(tau_bc_wb)", _rdboottestM.zetastbc * `scalepar')
-     else mata st_numscalar("e(tau_wb)", _rdboottestM.zetast * `scalepar')
+    else mata st_numscalar("e(tau_wb)", _rdboottestM.zetast * `scalepar')
   mata st_numscalar("e(p_wb)", _rdboottestM.getp("`ptype'"))
   mata CI = _rdboottestM.getci(`level', "`ptype'")
   mata st_numscalar("e(ci_l_rb_wb)", CI[1+(`scalepar'<0)] * `scalepar')
@@ -90,7 +90,7 @@ program define rdboottest, eclass
   ereturn scalar reps = `reps'
   ereturn scalar bcreps = `bcreps'
   ereturn local jk_wb `jk'
-  ereturn local bc_wb `jk'
+  ereturn local bc_wb `bc'
   ereturn repost, esample(`touse')
   ereturn local cmdline `cmdline'
   ereturn local cmd rdboottest

@@ -27,7 +27,7 @@ void WBSRDD::new() {
   v_sd = 1
 }
 
-real matrix WBSRDD::fold(matrix X) return(uppertriangle(X) + lowertriangle(X,0)')  // fold matrix diagonally; returns same values as a quad form, but runs faster because of all the 0's
+real matrix WBSRDD::fold(matrix X) return(uppertriangle(X) + lowertriangle(X,0)')  // fold matrix diagonally; returns same values as a quad form, but faster because of all the 0's
 real matrix WBSRDD::deletecol(matrix X, real scalar c) return(c==1? X[|.,2\.,.|] : (c==cols(X)? X[|.,.\.,c-1|] : X[|.,.\.,c-1|], X[|.,c+1\.,.|]))
 
 real colvector triangularkernel  (real scalar bw, real colvector X) return(1:-abs(X)/bw)
@@ -327,12 +327,8 @@ void WBSRDD::vs(real colvector Y, | real colvector T) {
   if (bc) {
     dist = J(B2, 1, 0)
     zetastbc = fuzzy? bc(1, ystb[,1], tstb[,1]) : bc(1, ystb[,1])  // bias-corrected estimate in "original" bs sample, zeta* - Δ*ᵢ
-      for (b=2; b<=B2+1; b++) {
-//       printf("."); if (!mod(b-1,50)) printf("\n")
-//       displayflush()
+    for (b=2; b<=B2+1; b++)
       dist[b-1] = (fuzzy? bc(b, ystb[,b], tstb[,b]) : bc(b, ystb[,b])) - zetast // deviations of bias-corrected estimates from uncorrected estimate in "original" bs sample zetâ ᵢ - Δ**ᵢ - zeta* (algorithm 3.2, step 3)
-    }
-//     printf("\n")
   } else {
     zetastbc = zetast
     dist = (cross(ystb, WrKr) :/ (fuzzy? cross(tstb, WrKr) : WWr))[|2\.|] :- zetast
@@ -360,8 +356,8 @@ real colvector WBSRDD::getci(real scalar level, | string scalar ptype) {
     absdist = abs(dist)
     _sort(absdist,1)
     halfwidth = absdist[round(level/100 * B2)]
-    return(zetastbc-halfwidth \ zetastbc+halfwidth)
-  }
+    return(zetastbc - halfwidth \ zetastbc + halfwidth)
+  } 
   if (ptype=="equaltail")
     return(zetastbc :+ dist[round(((1-level/100)/2, 1-(1-level/100)/2) * B2)])
   if (ptype=="lower")

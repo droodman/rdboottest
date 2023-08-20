@@ -175,11 +175,16 @@ Webb weights are probably better.
 {p 4}david@davidroodman.com{p_end}
 
 
-{title:Example}
+{title:Examples}
 
 {phang}. {stata `"use https://github.com/rdpackages/rdrobust/raw/master/stata/rdrobust_senate"'}{p_end}
 
 {phang}. {stata rdboottest vote margin}{p_end}
+{phang}. {stata mat dist = e(dist_wb)}{p_end}
+{phang}. {stata svmat dist}{p_end}
+{phang}. {stata histogram dist1, xline(`e(tau_bc_wb)')}  // bootstrap distribution with point estimate marked{p_end}
+
+{phang}. {stata rdboottest vote margin, fuzzy(class) nobc}  // fuzzy estimate without bootstrap-based bias correction{p_end}
 
 
 {title:References}
